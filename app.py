@@ -2,9 +2,23 @@ import flet as ft
 import danbooru_api
 import threading
 import os
+import datetime
 from settings import SettingsManager
 
 def main(page: ft.Page):
+    # 日付形式を変換する関数
+    def format_date(date_str):
+        """ISO 8601形式の日付文字列を YYYY/MM/DD hh:mm:ss 形式に変換"""
+        if not date_str:
+            return ""
+        try:
+            # ISO形式のパース（末尾のZや+HH:MMにも対応）
+            dt = datetime.datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            # YYYY/MM/DD hh:mm:ss 形式でフォーマット
+            return dt.strftime("%Y/%m/%d %H:%M:%S")
+        except:
+            return date_str
+    
     # outputディレクトリから既存のアーティストタグリストを取得
     def load_artist_list():
         artist_list.controls.clear()
@@ -29,8 +43,8 @@ def main(page: ft.Page):
         if api_ret != []:
             right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
             right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
-            right_upper_panel.controls[0].controls[2].controls[0].value = api_ret[0]["created_at"]
-            right_upper_panel.controls[0].controls[2].controls[1].value = api_ret[0]["updated_at"]
+            right_upper_panel.controls[0].controls[2].controls[0].value = format_date(api_ret[0]["created_at"])
+            right_upper_panel.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
             right_upper_panel.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
             right_upper_panel.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
             page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000))
@@ -47,8 +61,8 @@ def main(page: ft.Page):
             if api_ret != []:
                 right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
                 right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
-                right_upper_panel.controls[0].controls[2].controls[0].value = api_ret[0]["created_at"]
-                right_upper_panel.controls[0].controls[2].controls[1].value = api_ret[0]["updated_at"]
+                right_upper_panel.controls[0].controls[2].controls[0].value = format_date(api_ret[0]["created_at"])
+                right_upper_panel.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
                 right_upper_panel.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
                 right_upper_panel.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
                 page.update()
@@ -80,10 +94,10 @@ def main(page: ft.Page):
     
     # ダウンロードボタンのクリック処理
     def download_items(e):
-        if right_upper_panel.controls[0].controls[0].controls[1].value == "":
+        if right_upper_panel.controls[0].controls[1].controls[1].value == "":
             page.show_dialog(ft.SnackBar(ft.Text("先にアーティスト名検索をしてください。"), duration=3000))
         else:
-            artist_name = right_upper_panel.controls[0].controls[0].controls[1].value
+            artist_name = right_upper_panel.controls[0].controls[1].controls[1].value
             # オーバーレイを表示
             overlay.visible = True
             page.update()
@@ -142,7 +156,12 @@ def main(page: ft.Page):
             ft.Divider(),
             ft.Text("既存のアーティスト一覧", size=12),
             ft.Container(
-                content=artist_list,
+                content=ft.Column(
+                    controls=[artist_list],
+                    scroll=ft.ScrollMode.AUTO,
+                    spacing=2,
+                    expand=True,
+                ),
                 expand=True,
                 border=ft.border.all(1, ft.Colors.GREY_400),
                 border_radius=8,
