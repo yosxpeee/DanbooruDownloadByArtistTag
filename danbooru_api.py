@@ -20,7 +20,7 @@ def getArtistInfobyName(page, searchKey):
     return posts
 
 # ダウンロードする
-def downloadItems(page, artistName):
+def downloadItems(page, artistName, progress_callback=None):
     username = page.settings["account"]["username"]
     api_key = page.settings["account"]["api_key"]
     session = requests.Session()
@@ -28,12 +28,14 @@ def downloadItems(page, artistName):
         "User-Agent": "DanbooruDownloader/1.0 (by yosxpeee)"
     })
     os.makedirs("output/"+artistName, exist_ok=True)
-    page = 1
+    page_num = 1
+    total_downloaded = 0
+    
     while True:
         params = {
             "tags": f"{artistName}",
             "limit": 100,
-            "page": page
+            "page": page_num
         }
         r = session.get(
             "https://danbooru.donmai.us/posts.json",
@@ -73,6 +75,12 @@ def downloadItems(page, artistName):
                 # 配列内の_をスペースに置換
                 corrected_tags = [s.replace("_", " ") for s in corrected_tags]
                 f.write(", ".join(corrected_tags))
+            total_downloaded += 1
+            # コールバックがあれば呼び出す
+            if progress_callback:
+                progress_callback(total_downloaded)
             print(f"Saved {post_id}")
-        page += 1
+        page_num += 1
         time.sleep(1)
+    
+    return total_downloaded
