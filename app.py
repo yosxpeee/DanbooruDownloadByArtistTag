@@ -3,7 +3,11 @@ import danbooru_api
 import threading
 import os
 import datetime
+import json
 from settings import SettingsManager
+
+# downloaded_list.jsonのパス
+DOWNLOADED_LIST_PATH = "output/downloaded_list.json"
 
 def main(page: ft.Page):
     # 日付形式を変換する関数
@@ -12,25 +16,50 @@ def main(page: ft.Page):
         if not date_str:
             return ""
         try:
-            # ISO形式のパース（末尾のZや+HH:MMにも対応）
             dt = datetime.datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            # YYYY/MM/DD hh:mm:ss 形式でフォーマット
             return dt.strftime("%Y/%m/%d %H:%M:%S")
         except:
             return date_str
+    
+    # downloaded_list.jsonを読み込む
+    def load_downloaded_list():
+        if not os.path.exists(DOWNLOADED_LIST_PATH):
+            return {}
+        try:
+            with open(DOWNLOADED_LIST_PATH, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    
+    # downloaded_list.jsonを保存する
+    def save_downloaded_list(data):
+        os.makedirs("output", exist_ok=True)
+        with open(DOWNLOADED_LIST_PATH, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
     
     # outputディレクトリから既存のアーティストタグリストを取得
     def load_artist_list():
         artist_list.controls.clear()
         output_dir = "output"
+        
+        # downloaded_list.jsonのデータを取得
+        downloaded_data = load_downloaded_list()
+        
         if os.path.exists(output_dir) and os.path.isdir(output_dir):
             # outputディレクトリ内のフォルダを取得
             for item in os.listdir(output_dir):
                 item_path = os.path.join(output_dir, item)
                 if os.path.isdir(item_path):
+                    # ダウンロード日時を取得
+                    download_date = downloaded_data.get(item, "")
+                    if download_date:
+                        display_text = f"{item}  ({download_date})"
+                    else:
+                        display_text = item
+                    
                     # 各アーティストフォルダをクリック可能で追加
                     artist_btn = ft.TextButton(
-                        content=ft.Text(item, size=12),
+                        content=ft.Text(display_text, size=11),
                         on_click=lambda e, name=item: search_from_list(name),
                     )
                     artist_list.controls.append(artist_btn)
@@ -54,10 +83,10 @@ def main(page: ft.Page):
     
     # アーティスト名検索
     def search_artistname(e):
-        if left_panel.controls[1].value == "":
+        if left_panel.controls[1].controls[0].value == "":
             page.show_dialog(ft.SnackBar(ft.Text("アーティスト名を入れてください。"), duration=3000))
         else:
-            api_ret = danbooru_api.getArtistInfobyName(page, left_panel.controls[1].value)
+            api_ret = danbooru_api.getArtistInfobyName(page, left_panel.controls[1].controls[0].value)
             if api_ret != []:
                 right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
                 right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
@@ -69,7 +98,7 @@ def main(page: ft.Page):
             else:
                 page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
     
-    # ダウンロード処理を行う関数（別スレッドで実行）
+     # ダウンロード処理を行う関数（別スレッドで実行）
     def run_download(artist_name):
         try:
             # ダウンロード処理を実行
@@ -77,6 +106,15 @@ def main(page: ft.Page):
             
             # 完了後のUI更新
             def on_complete():
+                # 更新日を取得して保存
+                api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
+                if api_ret != []:
+                    updated_date = format_date(api_ret[0]["updated_at"])
+                    # downloaded_list.jsonを更新
+                    downloaded_data = load_downloaded_list()
+                    downloaded_data[artist_name] = updated_date
+                    save_downloaded_list(downloaded_data)
+                
                 overlay.visible = False
                 page.show_dialog(ft.SnackBar(ft.Text(f"download finished. {total}枚"), duration=3000))
                 # アーティストリストを再読み込み
@@ -144,16 +182,20 @@ def main(page: ft.Page):
     # 各パネル
     left_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
+        spacing=2,
+        intrinsic_width=True,
         controls=[
             ft.Text("アーティストタグ", size=12),
-            ft.TextField(label="ArtistTag", hint_text="input artist tag", text_size=12),
+            ft.Row(
+                controls=[ft.TextField(label="ArtistTag", hint_text="input artist tag", text_size=12, expand=True)],
+            ),
             ft.TextButton(
                 content="検索",
                 icon=ft.Icons.SEARCH,
                 icon_color=ft.Colors.BLUE_300,
                 on_click=search_artistname,
             ),
-            ft.Divider(),
+            ft.Divider(height=1, radius=0),
             ft.Text("既存のアーティスト一覧", size=12),
             ft.Container(
                 content=ft.Column(
