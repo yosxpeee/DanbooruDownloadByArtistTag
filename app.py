@@ -20,7 +20,7 @@ def main(page: ft.Page):
     
     # outputディレクトリから既存のアーティストタグリストを取得
     def load_artist_list():
-        artist_list.controls.clear()
+        artist_list.content.controls.clear()
         output_dir = "output"
         
         # downloaded_list.jsonのデータを取得
@@ -34,16 +34,19 @@ def main(page: ft.Page):
                     # ダウンロード日時を取得
                     download_date = downloaded_data.get(item, "")
                     if download_date:
-                        display_text = f"{item}  ({download_date})"
+                        display_text = f"{item}\n({download_date})"
                     else:
                         display_text = item
                     
                     # 各アーティストフォルダをクリック可能で追加
                     artist_btn = ft.TextButton(
-                        content=ft.Text(display_text, size=11),
+                        content=ft.Text(display_text, size=11, text_align=ft.TextAlign.LEFT),
                         on_click=lambda e, name=item: search_from_list(name),
+                        style=ft.ButtonStyle(
+                            padding=ft.Padding(8, 4, 8, 4),
+                        ),
                     )
-                    artist_list.controls.append(artist_btn)
+                    artist_list.content.controls.append(artist_btn)
         page.update()
     
     # リストからアーティストを検索
@@ -80,8 +83,13 @@ def main(page: ft.Page):
                 page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
     
     # ダウンロード処理を行う関数（別スレッドで実行）
-    def run_download(artist_name):
+    def run_download(artist_name, is_banned):
         try:
+            if is_banned == True:
+                page.show_dialog(ft.SnackBar(ft.Text("削除されたアーティストタグなのでダウンロードできません。"), duration=3000))
+                overlay.visible = False
+                page.update()
+                return
             # ダウンロード処理を実行
             total = danbooru_api.downloadItems(page, artist_name)
             
@@ -114,12 +122,13 @@ def main(page: ft.Page):
             page.show_dialog(ft.SnackBar(ft.Text("先にアーティスト名検索をしてください。"), duration=3000))
         else:
             artist_name = right_upper_panel.controls[0].controls[1].controls[1].value
+            is_banned = right_upper_panel.controls[0].controls[3].controls[1].value
             # オーバーレイを表示
             overlay.visible = True
             page.update()
             
             # 別スレッドでダウンロードを開始
-            download_thread = threading.Thread(target=run_download, args=(artist_name,))
+            download_thread = threading.Thread(target=run_download, args=(artist_name, is_banned))
             download_thread.daemon = True
             download_thread.start()
     
@@ -127,15 +136,25 @@ def main(page: ft.Page):
     page.title = "Danbooru crawler by artist tag"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.settings = SettingsManager.load()
-    page.window_width = 1280
-    page.window_height = 720
+    page.window.width = 1280
+    page.window.height = 720
+    page.window.min_width = 1024
+    page.window.min_height = 576
     page.padding = 0
     
     # アーティストリスト用のコンテナ
-    artist_list = ft.Column(
-        controls=[],
-        spacing=2,
+    artist_list = ft.Container(
+        content=ft.Column(
+            controls=[],
+            spacing=2,
+            expand=True,
+            alignment=ft.MainAxisAlignment.START,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        ),
         expand=True,
+        border=ft.border.all(1, ft.Colors.GREY_400),
+        border_radius=8,
+        padding=8,
     )
     
     # オーバーレイUIの作成
@@ -164,7 +183,7 @@ def main(page: ft.Page):
             ft.Text("アーティストタグ", size=12),
             ft.Row(
                 controls=[
-                    ft.TextField(label="ArtistTag", hint_text="input artist tag", text_size=12, expand=True),
+                    ft.TextField(label="Artist Tag", hint_text="input artist tag", text_size=12, expand=True),
                 ]  
             ),
             ft.TextButton(
@@ -175,18 +194,7 @@ def main(page: ft.Page):
             ),
             ft.Divider(height=1, radius=0),
             ft.Text("既存のアーティスト一覧", size=12),
-            ft.Container(
-                content=ft.Column(
-                    controls=[artist_list],
-                    scroll=ft.ScrollMode.AUTO,
-                    spacing=2,
-                    expand=True,
-                ),
-                expand=True,
-                border=ft.border.all(1, ft.Colors.GREY_400),
-                border_radius=8,
-                padding=8,
-            ),
+            artist_list,
         ],
         expand=1
     )
@@ -223,10 +231,19 @@ def main(page: ft.Page):
                 expand=False,
                 spacing=6,
             ),
-            ft.TextButton(
-                content="ダウンロード",
-                height=136,
-                on_click=download_items,
+            ft.Container(
+                content=ft.FilledButton(
+                    content=ft.Text("ダウンロード", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                    icon=ft.Icons.DOWNLOAD,
+                    height=136,
+                    on_click=download_items,
+                    style=ft.ButtonStyle(
+                        bgcolor=ft.Colors.BLUE,
+                        shape=ft.RoundedRectangleBorder(radius=8),
+                        padding=20,
+                    ),
+                ),
+                expand=True,
             ),
         ],
         expand=True,
