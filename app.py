@@ -124,7 +124,7 @@ def main(page: ft.Page):
             download_thread.start()
     
     # メインウインドウの設定
-    page.title = "danbooru clawler by artist"
+    page.title = "Danbooru crawler by artist tag"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.settings = SettingsManager.load()
     page.window_width = 1280

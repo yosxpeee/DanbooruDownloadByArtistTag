@@ -1,5 +1,5 @@
 ########################################
-# danbooru clauler by artist
+# Danbooru crawler by artist tag
 ########################################
 import flet as ft
 import app
