@@ -3,11 +3,8 @@ import danbooru_api
 import threading
 import os
 import datetime
-import json
 from settings import SettingsManager
-
-# downloaded_list.jsonのパス
-DOWNLOADED_LIST_PATH = "output/downloaded_list.json"
+from downloaded_list import DownloadedListManager
 
 def main(page: ft.Page):
     # 日付形式を変換する関数
@@ -21,29 +18,13 @@ def main(page: ft.Page):
         except:
             return date_str
     
-    # downloaded_list.jsonを読み込む
-    def load_downloaded_list():
-        if not os.path.exists(DOWNLOADED_LIST_PATH):
-            return {}
-        try:
-            with open(DOWNLOADED_LIST_PATH, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return {}
-    
-    # downloaded_list.jsonを保存する
-    def save_downloaded_list(data):
-        os.makedirs("output", exist_ok=True)
-        with open(DOWNLOADED_LIST_PATH, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-    
     # outputディレクトリから既存のアーティストタグリストを取得
     def load_artist_list():
         artist_list.controls.clear()
         output_dir = "output"
         
         # downloaded_list.jsonのデータを取得
-        downloaded_data = load_downloaded_list()
+        downloaded_data = DownloadedListManager.load()
         
         if os.path.exists(output_dir) and os.path.isdir(output_dir):
             # outputディレクトリ内のフォルダを取得
@@ -98,7 +79,7 @@ def main(page: ft.Page):
             else:
                 page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
     
-     # ダウンロード処理を行う関数（別スレッドで実行）
+    # ダウンロード処理を行う関数（別スレッドで実行）
     def run_download(artist_name):
         try:
             # ダウンロード処理を実行
@@ -110,10 +91,7 @@ def main(page: ft.Page):
                 api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
                 if api_ret != []:
                     updated_date = format_date(api_ret[0]["updated_at"])
-                    # downloaded_list.jsonを更新
-                    downloaded_data = load_downloaded_list()
-                    downloaded_data[artist_name] = updated_date
-                    save_downloaded_list(downloaded_data)
+                    DownloadedListManager.update_artist(artist_name, updated_date)
                 
                 overlay.visible = False
                 page.show_dialog(ft.SnackBar(ft.Text(f"download finished. {total}枚"), duration=3000))
@@ -182,12 +160,12 @@ def main(page: ft.Page):
     # 各パネル
     left_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
-        spacing=2,
-        intrinsic_width=True,
         controls=[
             ft.Text("アーティストタグ", size=12),
             ft.Row(
-                controls=[ft.TextField(label="ArtistTag", hint_text="input artist tag", text_size=12, expand=True)],
+                controls=[
+                    ft.TextField(label="ArtistTag", hint_text="input artist tag", text_size=12, expand=True),
+                ]  
             ),
             ft.TextButton(
                 content="検索",
