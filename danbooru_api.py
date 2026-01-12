@@ -20,7 +20,7 @@ def getArtistInfobyName(page, searchKey):
     return posts
 
 # ダウンロードする
-def downloadItems(page, artistName, progress_callback=None):
+def downloadItems(page, artistName):
     username = page.settings["account"]["username"]
     api_key = page.settings["account"]["api_key"]
     session = requests.Session()
@@ -56,30 +56,27 @@ def downloadItems(page, artistName, progress_callback=None):
             ext = os.path.splitext(file_url)[1]
             img_path = os.path.join("output/"+artistName, f"{post_id}{ext}")
             tag_path = os.path.join("output/"+artistName, f"{post_id}.txt")
+            
+            # 画像ファイルが存在しない場合のみダウンロード
             if not os.path.exists(img_path):
                 img = session.get(file_url, timeout=30)
                 img.raise_for_status()
                 with open(img_path, "wb") as f:
                     f.write(img.content)
+            
+            # タグファイル書き込み
             with open(tag_path, "w", encoding="utf-8") as f:
                 tag_string = post.get("tag_string", "")
-                #####################
-                # 学習用にタグを整える
-                #####################
-                # スペースで分割して配列化
                 tags = tag_string.split()
-                # アーティストタグを先頭に持ってくる
-                tags_with_artist = [item for item in tags if item == artistName] #
+                tags_with_artist = [item for item in tags if item == artistName]
                 tags_without_artist = [item for item in tags if item != artistName]
                 corrected_tags = tags_with_artist + tags_without_artist
-                # 配列内の_をスペースに置換
                 corrected_tags = [s.replace("_", " ") for s in corrected_tags]
                 f.write(", ".join(corrected_tags))
+            
             total_downloaded += 1
-            # コールバックがあれば呼び出す
-            if progress_callback:
-                progress_callback(total_downloaded)
             print(f"Saved {post_id}")
+        
         page_num += 1
         time.sleep(1)
     

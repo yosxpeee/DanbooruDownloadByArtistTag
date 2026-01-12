@@ -1,6 +1,5 @@
 import flet as ft
 import danbooru_api
-import asyncio
 import threading
 import os
 from settings import SettingsManager
@@ -28,12 +27,10 @@ def main(page: ft.Page):
         left_panel.controls[1].value = artist_name
         api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
         if api_ret != []:
-            right_upper_panel.controls[0].controls[0].controls[0].value = api_ret[0]["id"]
-            right_upper_panel.controls[0].controls[0].controls[1].value = api_ret[0]["name"]
-            right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["created_at"]
-            right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["updated_at"]
-            right_upper_panel.controls[0].controls[2].controls[0].value = api_ret[0]["group_name"]
-            right_upper_panel.controls[0].controls[2].controls[1].value = api_ret[0]["other_names"]
+            right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
+            right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
+            right_upper_panel.controls[0].controls[2].controls[0].value = api_ret[0]["created_at"]
+            right_upper_panel.controls[0].controls[2].controls[1].value = api_ret[0]["updated_at"]
             right_upper_panel.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
             right_upper_panel.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
             page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000))
@@ -48,30 +45,21 @@ def main(page: ft.Page):
         else:
             api_ret = danbooru_api.getArtistInfobyName(page, left_panel.controls[1].value)
             if api_ret != []:
-                right_upper_panel.controls[0].controls[0].controls[0].value = api_ret[0]["id"]
-                right_upper_panel.controls[0].controls[0].controls[1].value = api_ret[0]["name"]
-                right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["created_at"]
-                right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["updated_at"]
-                right_upper_panel.controls[0].controls[2].controls[0].value = api_ret[0]["group_name"]
-                right_upper_panel.controls[0].controls[2].controls[1].value = api_ret[0]["other_names"]
+                right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
+                right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
+                right_upper_panel.controls[0].controls[2].controls[0].value = api_ret[0]["created_at"]
+                right_upper_panel.controls[0].controls[2].controls[1].value = api_ret[0]["updated_at"]
                 right_upper_panel.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
                 right_upper_panel.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
                 page.update()
             else:
                 page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
     
-    # ダウンロード進捗更新用のコールバック（スレッドセーフ）
-    def update_progress(count):
-        # UI更新はpage.update()で行う
-        overlay_count.value = f"{count}"
-        overlay_text.value = f"ダウンロード中: {count}枚"
-        page.update()
-    
     # ダウンロード処理を行う関数（別スレッドで実行）
     def run_download(artist_name):
         try:
             # ダウンロード処理を実行
-            total = danbooru_api.downloadItems(page, artist_name, progress_callback=update_progress)
+            total = danbooru_api.downloadItems(page, artist_name)
             
             # 完了後のUI更新
             def on_complete():
@@ -79,6 +67,7 @@ def main(page: ft.Page):
                 page.show_dialog(ft.SnackBar(ft.Text(f"download finished. {total}枚"), duration=3000))
                 # アーティストリストを再読み込み
                 load_artist_list()
+                page.update()
             
             page.run_thread(on_complete)
             
@@ -97,8 +86,6 @@ def main(page: ft.Page):
             artist_name = right_upper_panel.controls[0].controls[0].controls[1].value
             # オーバーレイを表示
             overlay.visible = True
-            overlay_count.value = "0"
-            overlay_text.value = "ダウンロード中: 0枚"
             page.update()
             
             # 別スレッドでダウンロードを開始
@@ -110,8 +97,9 @@ def main(page: ft.Page):
     page.title = "danbooru clawler by artist"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.settings = SettingsManager.load()
-    page.window_width = 1000
-    page.window_height = 700
+    page.window_width = 1280
+    page.window_height = 720
+    page.padding = 0
     
     # アーティストリスト用のコンテナ
     artist_list = ft.Column(
@@ -121,14 +109,11 @@ def main(page: ft.Page):
     )
     
     # オーバーレイUIの作成
-    overlay_count = ft.Text("0", size=48, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE)
-    overlay_text = ft.Text("ダウンロード中: 0枚", size=16, color=ft.Colors.WHITE)
     overlay = ft.Container(
         content=ft.Column(
             controls=[
                 ft.Icon(ft.Icons.DOWNLOAD, size=64, color=ft.Colors.WHITE),
-                overlay_count,
-                overlay_text,
+                ft.Text("ダウンロード中...", size=16, color=ft.Colors.WHITE),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -137,6 +122,9 @@ def main(page: ft.Page):
         bgcolor=ft.Colors.with_opacity(0.8, ft.Colors.GREY),
         visible=False,
         alignment=ft.Alignment.CENTER,
+        expand=True,
+        margin=0,
+        padding=0,
     )
     
     # 各パネル
@@ -170,24 +158,18 @@ def main(page: ft.Page):
             ft.Column(
                 alignment=ft.MainAxisAlignment.START,
                 controls=[
+                    ft.Text("アーティスト情報", size=12),
                     ft.Row(
                         controls=[
-                            ft.TextField(label="ID", height=30, text_size=12, disabled=True),
-                            ft.TextField(label="アーティスト名", height=30,text_size=12, disabled=True),
+                            ft.TextField(label="ID", height=36, text_size=12, disabled=True),
+                            ft.TextField(label="アーティスト名", height=36,text_size=12, disabled=True),
                         ],
                         spacing=0,
                     ),
                     ft.Row(
                         controls=[
-                            ft.TextField(label="登録日", height=30,text_size=12, disabled=True),
-                            ft.TextField(label="更新日", height=30,text_size=12, disabled=True),
-                        ],
-                        spacing=0,
-                    ),
-                    ft.Row(
-                        controls=[
-                            ft.TextField(label="グループ名", height=30,text_size=12, disabled=True),
-                            ft.TextField(label="別名", height=30,text_size=12, disabled=True),
+                            ft.TextField(label="登録日", height=36,text_size=12, disabled=True),
+                            ft.TextField(label="更新日", height=36,text_size=12, disabled=True),
                         ],
                         spacing=0,
                     ),
@@ -233,7 +215,7 @@ def main(page: ft.Page):
         expand=True,
     )
     
-    # オーバーレイを含むコンテナ
+    # オーバーレイを含むStack
     page.add(
         ft.Stack(
             controls=[
