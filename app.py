@@ -282,7 +282,15 @@ def main(page: ft.Page):
     )
     right_middle_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
-        controls=[],
+        controls=[
+            ft.Container(
+                content=None,
+                expand=True,
+                border=ft.border.all(1, ft.Colors.GREY_400),
+                border_radius=8,
+                padding=4,
+            )
+        ],
         expand=5,
         spacing=0,
     )
