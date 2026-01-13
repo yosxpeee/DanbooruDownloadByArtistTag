@@ -60,12 +60,12 @@ def main(page: ft.Page):
         left_panel.controls[1].value = artist_name
         api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
         if api_ret != []:
-            right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
-            right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
-            right_upper_panel.controls[0].controls[2].controls[0].value = format_date(api_ret[0]["created_at"])
-            right_upper_panel.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
-            right_upper_panel.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
-            right_upper_panel.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
+            right_upper_panel.controls[0].content.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
+            right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
+            right_upper_panel.controls[0].content.controls[0].controls[2].controls[0].value = format_date(api_ret[0]["created_at"])
+            right_upper_panel.controls[0].content.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
+            right_upper_panel.controls[0].content.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
+            right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
             page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000))
         else:
             page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
@@ -78,12 +78,12 @@ def main(page: ft.Page):
         else:
             api_ret = danbooru_api.getArtistInfobyName(page, left_panel.controls[1].controls[0].value)
             if api_ret != []:
-                right_upper_panel.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
-                right_upper_panel.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
-                right_upper_panel.controls[0].controls[2].controls[0].value = format_date(api_ret[0]["created_at"])
-                right_upper_panel.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
-                right_upper_panel.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
-                right_upper_panel.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
+                right_upper_panel.controls[0].content.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
+                right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
+                right_upper_panel.controls[0].content.controls[0].controls[2].controls[0].value = format_date(api_ret[0]["created_at"])
+                right_upper_panel.controls[0].content.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
+                right_upper_panel.controls[0].content.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
+                right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
                 page.update()
             else:
                 page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
@@ -128,11 +128,11 @@ def main(page: ft.Page):
     
     # ダウンロードボタンのクリック処理
     def download_items(e):
-        if right_upper_panel.controls[0].controls[1].controls[1].value == "":
+        if right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value == "":
             page.show_dialog(ft.SnackBar(ft.Text("先にアーティスト名検索をしてください。"), duration=3000))
         else:
-            artist_name = right_upper_panel.controls[0].controls[1].controls[1].value
-            is_banned = right_upper_panel.controls[0].controls[3].controls[1].value
+            artist_name = right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value
+            is_banned = right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value
             # オーバーレイを表示
             overlay.visible = True
             page.update()
@@ -230,55 +230,67 @@ def main(page: ft.Page):
         ],
         expand=1
     )
-    right_upper_panel=ft.Row(
+    right_upper_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
-        vertical_alignment=ft.CrossAxisAlignment.START,
         controls=[
-            ft.Column(
-                alignment=ft.MainAxisAlignment.START,
-                controls=[
-                    ft.Text("アーティスト情報", size=12),
-                    ft.Row(
-                        controls=[
-                            ft.TextField(label="ID", height=36, text_size=12, disabled=True),
-                            ft.TextField(label="アーティスト名", height=36,text_size=12, disabled=True),
-                        ],
-                        spacing=0,
-                    ),
-                    ft.Row(
-                        controls=[
-                            ft.TextField(label="登録日", height=36,text_size=12, disabled=True),
-                            ft.TextField(label="更新日", height=36,text_size=12, disabled=True),
-                        ],
-                        spacing=0,
-                    ),
-                    ft.Row(
-                        controls=[
-                            ft.Checkbox(label="is deleted", value=False, disabled=True),
-                            ft.Checkbox(label="is banned", value=False, disabled=True),
-                        ],
-                        spacing=0,
-                    ),
-                ],
-                expand=False,
-                spacing=6,
-            ),
             ft.Container(
-                content=ft.FilledButton(
-                    content=ft.Text("ダウンロード", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                    icon=ft.Icons.DOWNLOAD,
-                    height=136,
-                    on_click=download_items,
-                    style=ft.ButtonStyle(
-                        bgcolor=ft.Colors.BLUE,
-                        shape=ft.RoundedRectangleBorder(radius=8),
-                        padding=20,
-                    ),
+                content=ft.Row(
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+                    controls=[
+                        ft.Column(
+                            alignment=ft.MainAxisAlignment.START,
+                            controls=[
+                                ft.Text("アーティスト情報", size=12),
+                                ft.Row(
+                                    controls=[
+                                        ft.TextField(label="ID", height=36, text_size=12, disabled=True),
+                                        ft.TextField(label="アーティスト名", height=36,text_size=12, disabled=True),
+                                    ],
+                                    spacing=0,
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.TextField(label="登録日", height=36,text_size=12, disabled=True),
+                                        ft.TextField(label="更新日", height=36,text_size=12, disabled=True),
+                                    ],
+                                    spacing=0,
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Checkbox(label="is deleted", value=False, disabled=True),
+                                        ft.Checkbox(label="is banned", value=False, disabled=True),
+                                    ],
+                                    spacing=0,
+                                ),
+                            ],
+                            expand=False,
+                            spacing=6,
+                        ),
+                        ft.Container(
+                            content=ft.FilledButton(
+                                content=ft.Text("ダウンロード", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                                icon=ft.Icons.DOWNLOAD,
+                                on_click=download_items,
+                                style=ft.ButtonStyle(
+                                    bgcolor=ft.Colors.BLUE,
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=20,
+                                ),
+                                expand=True,
+                            ),
+                            expand=True,
+                        ),
+                    ],
                 ),
                 expand=True,
-            ),
+                border=ft.border.all(1, ft.Colors.GREY_400),
+                border_radius=8,
+                padding=2,
+            )
         ],
-        expand=1,
+        expand=3,
+        spacing=0,
     )
     right_middle_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
@@ -288,7 +300,7 @@ def main(page: ft.Page):
                 expand=True,
                 border=ft.border.all(1, ft.Colors.GREY_400),
                 border_radius=8,
-                padding=4,
+                padding=2,
             )
         ],
         expand=5,
@@ -302,7 +314,7 @@ def main(page: ft.Page):
                 expand=True,
                 border=ft.border.all(1, ft.Colors.GREY_400),
                 border_radius=8,
-                padding=4,
+                padding=2,
             )
         ],
         expand=1,
