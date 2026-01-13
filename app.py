@@ -7,6 +7,12 @@ from settings import SettingsManager
 from downloaded_list import DownloadedListManager
 
 def main(page: ft.Page):
+    # ログ表示用の関数
+    def append_log(message):
+        """ログをTextFieldに追加する"""
+        log_text.value += f"{message}\n"
+        page.update()
+    
     # 日付形式を変換する関数
     def format_date(date_str):
         """ISO 8601形式の日付文字列を YYYY/MM/DD hh:mm:ss 形式に変換"""
@@ -86,12 +92,13 @@ def main(page: ft.Page):
     def run_download(artist_name, is_banned):
         try:
             if is_banned == True:
+                append_log("エラー: 削除されたアーティストタグです")
                 page.show_dialog(ft.SnackBar(ft.Text("削除されたアーティストタグなのでダウンロードできません。"), duration=3000))
                 overlay.visible = False
                 page.update()
                 return
-            # ダウンロード処理を実行
-            total = danbooru_api.downloadItems(page, artist_name)
+            # ダウンロード処理を実行（log_callbackを追加）
+            total = danbooru_api.downloadItems(page, artist_name, log_callback=append_log)
             
             # 完了後のUI更新
             def on_complete():
@@ -102,6 +109,7 @@ def main(page: ft.Page):
                     DownloadedListManager.update_artist(artist_name, updated_date)
                 
                 overlay.visible = False
+                append_log(f"完了: {total}枚ダウンロードしました")
                 page.show_dialog(ft.SnackBar(ft.Text(f"download finished. {total}枚"), duration=3000))
                 # アーティストリストを再読み込み
                 load_artist_list()
@@ -110,9 +118,11 @@ def main(page: ft.Page):
             page.run_thread(on_complete)
             
         except Exception as e:
+            error_msg = str(e)
             def on_error():
+                append_log(f"エラー: {error_msg}")
                 overlay.visible = False
-                page.show_dialog(ft.SnackBar(ft.Text(f"Error: {str(e)}"), duration=3000))
+                page.show_dialog(ft.SnackBar(ft.Text(f"Error: {error_msg}"), duration=3000))
                 page.update()
             page.run_thread(on_error)
     
@@ -175,6 +185,28 @@ def main(page: ft.Page):
         margin=0,
         padding=0,
     )
+    
+    # ログ表示用TextField
+    log_text = ft.TextField(
+        value="",
+        multiline=True,
+        min_lines=8,
+        expand=True,
+        read_only=True,
+        bgcolor=ft.Colors.GREY_50,
+        text_size=12,
+        border_color=ft.Colors.GREY_400,
+        content_padding=ft.Padding(8, 8, 8, 8),
+    )
+    # Containerでラップしてスクロール可能にする
+    log_container = ft.Container(
+        content=log_text,
+        expand=True,
+        border=ft.border.all(1, ft.Colors.GREY_400),
+        border_radius=8,
+        padding=4,
+    )
+    log_text._container = log_container  # 循環参照を避けるため、weakref的な方法が必要
     
     # 各パネル
     left_panel=ft.Column(
@@ -246,13 +278,37 @@ def main(page: ft.Page):
                 expand=True,
             ),
         ],
-        expand=True,
+        expand=1,
+    )
+    right_middle_panel=ft.Column(
+        alignment=ft.MainAxisAlignment.START,
+        controls=[],
+        expand=5,
+        spacing=0,
     )
     right_lower_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
-        controls=[],
-        expand=True,
+        controls=[
+            ft.Container(
+                content=log_text,
+                expand=True,
+                border=ft.border.all(1, ft.Colors.GREY_400),
+                border_radius=8,
+                padding=4,
+            )
+        ],
+        expand=1,
         spacing=0,
+    )
+    
+    # 右側パネル全体をColumnで管理（上部、中央、下部）
+    right_panel_column = ft.Column(
+        controls=[
+            right_upper_panel,
+            right_middle_panel,
+            right_lower_panel,
+        ],
+        expand=3,
     )
     
     # ページへパネルを追加
@@ -260,13 +316,7 @@ def main(page: ft.Page):
         alignment=ft.MainAxisAlignment.START,
         controls=[
             left_panel,
-            ft.Column(
-                controls=[
-                    right_upper_panel,
-                    right_lower_panel,
-                ],
-                expand=3,
-            ),
+            right_panel_column,
         ],
         expand=True,
     )

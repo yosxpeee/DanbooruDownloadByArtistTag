@@ -2,14 +2,18 @@ import os
 import time
 import requests
 
-# アーティスト検索
-def getArtistInfobyName(page, searchKey):
-    username = page.settings["account"]["username"]
-    api_key = page.settings["account"]["api_key"]
+def _create_settion():
     session = requests.Session()
     session.headers.update({
         "User-Agent": "DanbooruDownloader/1.0 (by yosxpeee)"
     })
+    return session
+
+# アーティスト検索
+def getArtistInfobyName(page, searchKey):
+    username = page.settings["account"]["username"]
+    api_key = page.settings["account"]["api_key"]
+    session = _create_settion()
     r = session.get(
         f"https://danbooru.donmai.us/artists.json?search[name]={searchKey}",
         auth=(username, api_key),
@@ -20,16 +24,16 @@ def getArtistInfobyName(page, searchKey):
     return posts
 
 # ダウンロードする
-def downloadItems(page, artistName):
+def downloadItems(page, artistName, log_callback=None):
     username = page.settings["account"]["username"]
     api_key = page.settings["account"]["api_key"]
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "DanbooruDownloader/1.0 (by yosxpeee)"
-    })
+    session = _create_settion()
     os.makedirs("output/"+artistName, exist_ok=True)
     page_num = 1
     total_downloaded = 0
+    
+    if log_callback:
+        log_callback(f"「{artistName}」のダウンロードを開始します")
     
     while True:
         params = {
@@ -46,7 +50,8 @@ def downloadItems(page, artistName):
         r.raise_for_status()
         posts = r.json()
         if not posts:
-            print("No more posts.")
+            if log_callback:
+                log_callback("これ以上の投稿はありません")
             break
         for post in posts:
             file_url = post.get("file_url")
@@ -75,9 +80,15 @@ def downloadItems(page, artistName):
                 f.write(", ".join(corrected_tags))
             
             total_downloaded += 1
-            print(f"Saved {post_id}")
+            if log_callback:
+                log_callback(f"Saved {post_id}")
+            else:
+                print(f"Saved {post_id}")
         
         page_num += 1
         time.sleep(1)
+    
+    if log_callback:
+        log_callback(f"ダウンロード完了: {total_downloaded}枚")
     
     return total_downloaded
