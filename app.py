@@ -228,7 +228,7 @@ def main(page: ft.Page):
             ft.Text("既存のアーティスト一覧", size=12),
             artist_list,
         ],
-        expand=1
+        width=250,
     )
     right_upper_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
@@ -287,9 +287,10 @@ def main(page: ft.Page):
                 border=ft.border.all(1, ft.Colors.GREY_400),
                 border_radius=8,
                 padding=2,
+                height=200,
             )
         ],
-        expand=3,
+        expand=False,
         spacing=0,
     )
     right_middle_panel=ft.Column(
