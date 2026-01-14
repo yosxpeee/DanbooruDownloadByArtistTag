@@ -34,3 +34,13 @@ class DownloadedListManager:
         """特定のアーティストの更新日を取得"""
         data = DownloadedListManager.load()
         return data.get(artist_name, "")
+    
+    @staticmethod
+    def remove_artist(artist_name):
+        """特定のアーティストを削除"""
+        data = DownloadedListManager.load()
+        if artist_name in data:
+            del data[artist_name]
+            DownloadedListManager.save(data)
+            return True
+        return False

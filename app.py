@@ -32,6 +32,22 @@ def main(page: ft.Page):
         # downloaded_list.jsonのデータを取得
         downloaded_data = DownloadedListManager.load()
         
+        # ヘッダー行（見出し）
+        header_row = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Container(content=ft.Text("削除", size=12), width=40, alignment=ft.Alignment.CENTER),  # 削除ボタン列
+                    ft.Container(content=ft.Text("アーティスト名", size=12, weight=ft.FontWeight.BOLD), alignment=ft.Alignment.CENTER, expand=True),
+                    ft.Container(content=ft.Text("更新日", size=12, weight=ft.FontWeight.BOLD), width=140),
+                ],
+                spacing=8,
+            ),
+            padding=ft.Padding(4, 4, 4, 4),
+            bgcolor=ft.Colors.GREY_200,
+            border_radius=4,
+        )
+        artist_list.content.controls.append(header_row)
+        
         if os.path.exists(output_dir) and os.path.isdir(output_dir):
             # outputディレクトリ内のフォルダを取得
             for item in os.listdir(output_dir):
@@ -39,26 +55,50 @@ def main(page: ft.Page):
                 if os.path.isdir(item_path):
                     # ダウンロード日時を取得
                     download_date = downloaded_data.get(item, "")
-                    if download_date:
-                        display_text = f"{item}\n({download_date})"
-                    else:
-                        display_text = item
                     
-                    # 各アーティストフォルダをクリック可能で追加
-                    artist_btn = ft.TextButton(
-                        content=ft.Text(display_text, size=11, text_align=ft.TextAlign.LEFT),
+                    # 削除ボタン
+                    delete_btn = ft.IconButton(
+                        icon=ft.Icons.DELETE_OUTLINE,
+                        icon_size=20,
+                        icon_color=ft.Colors.RED_400,
+                        tooltip="削除",
+                        on_click=lambda e, name=item: delete_artist(name),
+                    )
+                    
+                    # アーティスト名（クリック可能）
+                    artist_name_btn = ft.TextButton(
+                        content=ft.Text(item, size=12),
                         on_click=lambda e, name=item: search_from_list(name),
                         style=ft.ButtonStyle(
                             padding=ft.Padding(8, 4, 8, 4),
                         ),
                     )
-                    artist_list.content.controls.append(artist_btn)
+                    
+                    # 更新日表示
+                    date_text = ft.Text(download_date if download_date else "-", size=12)
+                    
+                    # 1行分のRow
+                    row = ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Container(content=delete_btn, width=40),
+                                ft.Container(content=artist_name_btn, expand=True),
+                                ft.Container(content=date_text, width=140),
+                            ],
+                            spacing=8,
+                        ),
+                        padding=ft.Padding(4, 4, 4, 4),
+                    )
+                    artist_list.content.controls.append(row)
+        
         page.update()
     
     # リストからアーティストを検索
     def search_from_list(artist_name):
         left_panel.controls[1].value = artist_name
         api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
+        tag_counts = danbooru_api.getTagCounts(page, artist_name.replace(" ", "_"))
+        print(tag_counts)
         if api_ret != []:
             right_upper_panel.controls[0].content.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
             right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
@@ -66,6 +106,7 @@ def main(page: ft.Page):
             right_upper_panel.controls[0].content.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
             right_upper_panel.controls[0].content.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
             right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
+            right_upper_panel.controls[0].content.controls[0].controls[3].controls[3].value = "Posts："+str(tag_counts["counts"]["posts"])
             page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000))
         else:
             page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
@@ -77,6 +118,7 @@ def main(page: ft.Page):
             page.show_dialog(ft.SnackBar(ft.Text("アーティスト名を入れてください。"), duration=3000))
         else:
             api_ret = danbooru_api.getArtistInfobyName(page, left_panel.controls[1].controls[0].value)
+            tag_counts = danbooru_api.getTagCounts(page, left_panel.controls[1].controls[0].value.replace(" ", "_"))
             if api_ret != []:
                 right_upper_panel.controls[0].content.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
                 right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
@@ -84,9 +126,49 @@ def main(page: ft.Page):
                 right_upper_panel.controls[0].content.controls[0].controls[2].controls[1].value = format_date(api_ret[0]["updated_at"])
                 right_upper_panel.controls[0].content.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
                 right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
+                right_upper_panel.controls[0].content.controls[0].controls[3].controls[3].value = "Posts："+str(tag_counts["counts"]["posts"])
                 page.update()
             else:
                 page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
+    
+    # アーティストの削除処理
+    def delete_artist(artist_name):
+        """ダウンロード済みのアーティストを削除する"""
+        import shutil
+        
+        # 確認ダイアログ
+        def confirm_delete(e, dialog):
+            # ダイアログを閉じる
+            dialog.open = False
+            page.update()
+            
+            # ダウンロード済みデータから削除
+            DownloadedListManager.remove_artist(artist_name)
+            
+            # outputディレクトリ内のフォルダを削除
+            output_dir = "output"
+            artist_path = os.path.join(output_dir, artist_name)
+            if os.path.exists(artist_path):
+                shutil.rmtree(artist_path)
+                append_log(f"削除完了: {artist_name}")
+            else:
+                append_log(f"フォルダ見つかりず: {artist_name}")
+            
+            # リストを再読み込み
+            load_artist_list()
+            page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を削除しました"), duration=2000))
+            page.update()
+        
+        # 確認求めるダイアログ
+        dialog = ft.AlertDialog(
+            title=ft.Text("削除確認"),
+            content=ft.Text(f"「{artist_name}」のフォルダとデータを削除しますか？\n（元に戻せません）"),
+            actions=[
+                ft.TextButton("キャンセル", on_click=lambda e: (setattr(dialog, 'open', False), page.update())),
+                ft.TextButton("削除", on_click=lambda e: confirm_delete(e, dialog)),
+            ],
+        )
+        page.show_dialog(dialog)
     
     # ダウンロード処理を行う関数（別スレッドで実行）
     def run_download(artist_name, is_banned):
@@ -160,6 +242,7 @@ def main(page: ft.Page):
             expand=True,
             alignment=ft.MainAxisAlignment.START,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            scroll=ft.ScrollMode.AUTO,
         ),
         expand=True,
         border=ft.border.all(1, ft.Colors.GREY_400),
@@ -228,7 +311,7 @@ def main(page: ft.Page):
             ft.Text("既存のアーティスト一覧", size=12),
             artist_list,
         ],
-        width=250,
+        width=400,
     )
     right_upper_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
@@ -260,6 +343,14 @@ def main(page: ft.Page):
                                     controls=[
                                         ft.Checkbox(label="is deleted", value=False, disabled=True),
                                         ft.Checkbox(label="is banned", value=False, disabled=True),
+                                        ft.Text(" | "),
+                                        ft.Text("Posts："),
+                                    ],
+                                    spacing=0,
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Text("※Postsと実際のダウンロード数は使用するアカウントの権限により一致しないことがあります。"),
                                     ],
                                     spacing=0,
                                 ),

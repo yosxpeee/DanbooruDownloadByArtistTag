@@ -23,6 +23,20 @@ def getArtistInfobyName(page, searchKey):
     posts = r.json()
     return posts
 
+# タグカウント取得
+def getTagCounts(page, searchKey):
+    username = page.settings["account"]["username"]
+    api_key = page.settings["account"]["api_key"]
+    session = _create_settion()
+    r = session.get(
+        f"https://danbooru.donmai.us/counts/posts.json?tags={searchKey}",
+        auth=(username, api_key),
+        timeout=30
+    )
+    r.raise_for_status()
+    posts = r.json()
+    return posts
+
 # ダウンロードする
 def downloadItems(page, artistName, log_callback=None):
     username = page.settings["account"]["username"]
