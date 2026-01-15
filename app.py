@@ -230,8 +230,8 @@ def main(page: ft.Page):
     page.settings = SettingsManager.load()
     page.window.width = 1280
     page.window.height = 720
-    page.window.min_width = 1024
-    page.window.min_height = 576
+    page.window.min_width = 1280
+    page.window.min_height = 720
     page.padding = 0
     
     # ログ表示用の関数
