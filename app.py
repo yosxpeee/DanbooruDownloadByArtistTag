@@ -99,7 +99,6 @@ def main(page: ft.Page):
         left_panel.controls[1].value = artist_name
         api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
         tag_counts = danbooru_api.getTagCounts(page, artist_name.replace(" ", "_"))
-        print(tag_counts)
         if api_ret != []:
             right_upper_panel.controls[0].content.controls[0].controls[1].controls[0].value = api_ret[0]["id"]
             right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value = api_ret[0]["name"]
@@ -234,6 +233,106 @@ def main(page: ft.Page):
     page.window.min_width = 1024
     page.window.min_height = 576
     page.padding = 0
+    
+    # ログ表示用の関数
+    def append_log(message):
+        """ログをTextFieldに追加する"""
+        log_text.value += f"{message}\n"
+        page.update()
+    
+    # 設定をGUIで管理
+    username_text = ft.TextField(
+        value=page.settings["account"]["username"],
+        label="ユーザー名",
+        hint_text="Danbooruユーザー名",
+        text_size=12,
+        expand=True,
+    )
+    api_key_text = ft.TextField(
+        value=page.settings["account"]["api_key"],
+        label="APIキー",
+        hint_text="Danbooru APIキー",
+        text_size=12,
+        password=True,
+        can_reveal_password=True,
+        expand=True,
+    )
+    
+    # 設定ダイアログ
+    def show_settings_dialog():
+        dialog = ft.AlertDialog(
+            title=ft.Text("設定"),
+            content=ft.Column(
+                controls=[
+                    ft.Text("アカウント", size=14, weight=ft.FontWeight.BOLD),
+                    username_text,
+                    api_key_text,
+                ],
+                spacing=16,
+                height=200,
+            ),
+            actions=[
+                ft.TextButton(
+                    "キャンセル",
+                    on_click=lambda e: (setattr(dialog, 'open', False), page.update()),
+                ),
+                ft.TextButton(
+                    "保存",
+                    on_click=lambda e: save_settings(e, dialog),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            modal=True,
+        )
+        page.show_dialog(dialog)
+    
+    # 設定保存
+    def save_settings(e, dialog):
+        page.settings["account"]["username"] = username_text.value
+        page.settings["account"]["api_key"] = api_key_text.value
+        SettingsManager.save(page.settings)
+        dialog.open = False
+        page.show_dialog(ft.SnackBar(ft.Text("設定を保存しました"), duration=2000))
+        page.update()
+    
+    # メニューバー作成
+    menu_bar = ft.Row(
+        controls=[
+            ft.MenuBar(
+                expand=True,
+                controls=[
+                    ft.SubmenuButton(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.SETTINGS, size=20, color=ft.Colors.BLACK),
+                            ft.Text("設定", weight=ft.FontWeight.W_600, size=14),
+                        ]),
+                        key="submenubutton",
+                        controls=[
+                            ft.MenuItemButton(
+                                content=ft.Row([
+                                    ft.Icon(ft.Icons.ACCOUNT_BOX, size=18, color=ft.Colors.BLACK),
+                                    ft.Text("アカウント", weight=ft.FontWeight.W_400, size=12),
+                                ]),
+                                on_click=lambda e: show_settings_dialog(),
+                            ),
+                        ],
+                        menu_style=ft.MenuStyle(
+                            bgcolor=ft.Colors.WHITE,
+                            shape=ft.RoundedRectangleBorder(radius=0),
+                            padding=0,
+                        ),
+                    ),
+                ],
+                style=ft.MenuStyle(
+                    alignment=ft.Alignment.TOP_LEFT,
+                    bgcolor=ft.Colors.WHITE,
+                    mouse_cursor=ft.MouseCursor.CLICK,
+                    shape=ft.RoundedRectangleBorder(radius=0),
+                    padding=0,
+                ),
+            )
+        ]
+    )
     
     # アーティストリスト用のコンテナ
     artist_list = ft.Container(
@@ -425,13 +524,21 @@ def main(page: ft.Page):
     )
     
     # ページへパネルを追加
-    main_content = ft.Row(
-        alignment=ft.MainAxisAlignment.START,
+    main_content = ft.Column(
         controls=[
-            left_panel,
-            right_panel_column,
+            menu_bar,
+            ft.Divider(),
+            ft.Row(
+                alignment=ft.MainAxisAlignment.START,
+                controls=[
+                    left_panel,
+                    right_panel_column,
+                ],
+                expand=True,
+            ),
         ],
         expand=True,
+        spacing=0,
     )
     
     # オーバーレイを含むStack
