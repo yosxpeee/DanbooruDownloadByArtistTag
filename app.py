@@ -1,8 +1,9 @@
 import flet as ft
-import danbooru_api
 import threading
 import os
 import datetime
+
+import danbooru_api
 from settings import SettingsManager
 from downloaded_list import DownloadedListManager
 

@@ -1,5 +1,6 @@
 ########################################
 # Danbooru crawler by artist tag
+# powered by mimo-v2-flash
 ########################################
 import flet as ft
 import app
