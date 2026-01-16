@@ -1,3 +1,4 @@
 requests==2.32.5
+pyinstaller==6.18.0
 flet==0.80.2
 flet-desktop==0.80.2

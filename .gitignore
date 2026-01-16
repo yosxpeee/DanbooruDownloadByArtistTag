@@ -1,5 +1,8 @@
 .vscode
 __pycache__
+build
+dist
 output
 venv
 settings.json
+*.spec
