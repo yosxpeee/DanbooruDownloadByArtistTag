@@ -107,9 +107,178 @@ def main(page: ft.Page):
             right_upper_panel.controls[0].content.controls[0].controls[3].controls[0].value = api_ret[0]["is_deleted"]
             right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value = api_ret[0]["is_banned"]
             right_upper_panel.controls[0].content.controls[0].controls[3].controls[3].value = "Posts："+str(tag_counts["counts"]["posts"])
+            
+            # 右中央パネルにファイルビューワーを表示
+            show_file_viewer(artist_name)
+            
             page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000))
         else:
             page.show_dialog(ft.SnackBar(ft.Text("Not Found."), duration=3000))
+        page.update()
+    
+    # ファイルプレビューを表示する関数
+    def show_file_preview(file_path, tag_text_control=None):
+        """選択されたファイルのプレビューを表示する"""
+        ext = os.path.splitext(file_path)[1].lower()
+        
+        # タグを読み込む
+        if tag_text_control:
+            tag_file_path = os.path.splitext(file_path)[0] + ".txt"
+            if os.path.exists(tag_file_path):
+                try:
+                    with open(tag_file_path, 'r', encoding='utf-8') as f:
+                        tag_content = f.read()
+                        tag_text_control.value = tag_content
+                except Exception as e:
+                    tag_text_control.value = f"タグファイルを読み込めませんでした: {e}"
+            else:
+                tag_text_control.value = "タグファイルがありません"
+        
+        if ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+            # 画像ファイル
+            preview = ft.Image(
+                src=file_path,
+                fit=ft.BoxFit.CONTAIN,
+                expand=True,
+            )
+            return preview
+        elif ext in [".mp4", ".webm", ".gif"]:
+            # 動画ファイル
+            preview = ft.Video(
+                src=file_path,
+                expand=True,
+                autoplay=False,
+                muted=False,
+                controls=True,
+            )
+            return preview
+        else:
+            # 画像・動画以外は×アイコン表示
+            return ft.Container(
+                content=ft.Icon(ft.Icons.CLOSE, size=64, color=ft.Colors.GREY_400),
+                alignment=ft.Alignment.CENTER,
+                expand=True,
+            )
+    
+    # ファイルビューワーを表示する関数
+    def show_file_viewer(artist_name):
+        """アーティストのダウンロード済みファイルを表示する"""
+        artist_dir = os.path.join("output", artist_name)
+        
+        # ビューワークリア
+        right_middle_panel.controls.clear()
+        
+        if not os.path.exists(artist_dir):
+            right_middle_panel.controls.append(
+                ft.Container(
+                    content=ft.Text("ダウンロードフォルダが見つかりません"),
+                    alignment=ft.Alignment.CENTER,
+                    expand=True,
+                )
+            )
+            return
+        
+        # ファイル一覧を取得（.txtを除外）
+        files = []
+        for item in sorted(os.listdir(artist_dir)):
+            item_path = os.path.join(artist_dir, item)
+            if os.path.isfile(item_path) and not item.lower().endswith(".txt"):
+                files.append(item)
+        
+        if not files:
+            right_middle_panel.controls.append(
+                ft.Container(
+                    content=ft.Text("ファイルがありません"),
+                    alignment=ft.Alignment.CENTER,
+                    expand=True,
+                )
+            )
+            return
+        
+        # 左ペイン: ファイル一覧
+        file_list_container = ft.Container(
+            content=ft.Column(
+                controls=[],
+                scroll=ft.ScrollMode.AUTO,
+                spacing=2,
+            ),
+            width=200,
+            border=ft.border.all(1, ft.Colors.GREY_400),
+            border_radius=4,
+            padding=4,
+        )
+        
+        # 右ペイン: プレビュー
+        preview_container = ft.Container(
+            content=ft.Text("ファイルを選択してください"),
+            expand=True,
+            border=ft.border.all(1, ft.Colors.GREY_400),
+            border_radius=4,
+            alignment=ft.Alignment.CENTER,
+        )
+        
+        # 右ペイン: タグ情報（ContainerにTextFieldを入れる）
+        tag_text_field = ft.TextField(
+            value="",
+            multiline=True,
+            expand=True,
+            read_only=True,
+            bgcolor=ft.Colors.GREY_50,
+            text_size=11,
+            min_lines=20,
+            border_color=ft.Colors.GREY_400,
+            content_padding=ft.Padding(8, 8, 8, 8),
+            hint_text="タグ情報",
+        )
+        
+        # ファイル一覧を作成
+        for file_name in files:
+            # ファイル名ボタン
+            btn = ft.TextButton(
+                content=ft.Text(file_name, size=11, text_align=ft.TextAlign.LEFT),
+                on_click=lambda e, fn=show_file_preview, fp=os.path.join(artist_dir, file_name), tt=tag_text_field, pc=preview_container: open_file_preview(fn, fp, tt, pc),
+                style=ft.ButtonStyle(
+                    padding=ft.Padding(4, 2, 4, 2),
+                ),
+            )
+            file_list_container.content.controls.append(btn)
+        
+        # タグ情報を含むContainer
+        tag_container = ft.Container(
+            content=tag_text_field,
+            height=100,
+            border=ft.border.all(1, ft.Colors.GREY_400),
+            border_radius=4,
+            padding=4,
+        )
+        
+        # 2ペインレイアウト
+        right_middle_panel.controls.append(
+            ft.Row(
+                controls=[
+                    file_list_container,
+                    ft.Column(
+                        controls=[
+                            preview_container,
+                            tag_container,
+                        ],
+                        expand=1,
+                        spacing=4,
+                    ),
+                ],
+                expand=1,
+                spacing=4,
+            )
+        )
+    
+    # ファイルプレビューを開く関数
+    def open_file_preview(show_file_preview_func, file_path, tag_text, preview_container):
+        """選択されたファイルのプレビューとタグを表示する"""
+        # プレビューを更新（タグも同時に読み込む）
+        preview = show_file_preview_func(file_path, tag_text)
+        preview_container.content = preview
+        
+        # 画面更新（タグの更新も含める）
         page.update()
     
     # アーティスト名検索
