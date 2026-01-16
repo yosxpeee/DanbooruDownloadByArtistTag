@@ -7,8 +7,9 @@ import danbooru_api
 from settings import SettingsManager
 from downloaded_list import DownloadedListManager
 
-# 選択されたアーティスト名を保持
+# 選択状態を保持
 selected_artist_name = None
+selected_file_name = None
 
 def main(page: ft.Page):
     # ログ表示用の関数
@@ -200,10 +201,17 @@ def main(page: ft.Page):
     # ファイルビューワーを表示する関数
     def show_file_viewer(artist_name):
         """アーティストのダウンロード済みファイルを表示する"""
+        global selected_file_name, selected_artist_name
         artist_dir = os.path.join("output", artist_name)
+        
+        # ファイル選択状態をクリア
+        selected_file_name = None
         
         # ビューワークリア
         right_middle_panel.controls.clear()
+        
+        # アーティスト選択状態を更新（ハイライト用）
+        selected_artist_name = artist_name
         
         if not os.path.exists(artist_dir):
             right_middle_panel.controls.append(
@@ -270,13 +278,18 @@ def main(page: ft.Page):
         
         # ファイル一覧を作成
         for file_name in files:
-            # ファイル名ボタン
-            btn = ft.TextButton(
-                content=ft.Text(file_name, size=11, text_align=ft.TextAlign.LEFT),
-                on_click=lambda e, fn=show_file_preview, fp=os.path.join(artist_dir, file_name), tt=tag_text_field, pc=preview_container: open_file_preview(fn, fp, tt, pc),
-                style=ft.ButtonStyle(
-                    padding=ft.Padding(4, 2, 4, 2),
+            # ファイル名ボタン - 選択状態なら黄色背景
+            bgcolor = ft.Colors.YELLOW_200 if selected_file_name == file_name else None
+            btn = ft.Container(
+                content=ft.TextButton(
+                    content=ft.Text(file_name, size=11, text_align=ft.TextAlign.LEFT),
+                    on_click=lambda e, fn=show_file_preview, fp=os.path.join(artist_dir, file_name), tt=tag_text_field, pc=preview_container, fl=file_list_container.content.controls: open_file_preview(fn, fp, tt, pc, fl),
+                    style=ft.ButtonStyle(
+                        padding=ft.Padding(4, 2, 4, 2),
+                    ),
                 ),
+                bgcolor=bgcolor,
+                border_radius=4,
             )
             file_list_container.content.controls.append(btn)
         
@@ -309,11 +322,26 @@ def main(page: ft.Page):
         )
     
     # ファイルプレビューを開く関数
-    def open_file_preview(show_file_preview_func, file_path, tag_text, preview_container):
+    def open_file_preview(show_file_preview_func, file_path, tag_text, preview_container, file_list_controls):
         """選択されたファイルのプレビューとタグを表示する"""
+        global selected_file_name
+        # ファイル名を抽出して選択状態を更新
+        selected_file_name = os.path.basename(file_path)
+        
         # プレビューを更新（タグも同時に読み込む）
         preview = show_file_preview_func(file_path, tag_text)
         preview_container.content = preview
+        
+        # ファイル一覧のハイライトを更新
+        for control in file_list_controls:
+            if isinstance(control, ft.Container) and control.content is not None:
+                # コンテナの中のTextButtonの内容を取得
+                if hasattr(control.content, 'content') and hasattr(control.content.content, 'value'):
+                    file_name = control.content.content.value
+                    if file_name == selected_file_name:
+                        control.bgcolor = ft.Colors.YELLOW_200
+                    else:
+                        control.bgcolor = None
         
         # 画面更新（タグの更新も含める）
         page.update()
