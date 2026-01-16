@@ -7,6 +7,9 @@ import danbooru_api
 from settings import SettingsManager
 from downloaded_list import DownloadedListManager
 
+# 選択されたアーティスト名を保持
+selected_artist_name = None
+
 def main(page: ft.Page):
     # ログ表示用の関数
     def append_log(message):
@@ -37,13 +40,26 @@ def main(page: ft.Page):
         header_row = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Container(content=ft.Text("削除", size=12), width=40, alignment=ft.Alignment.CENTER),  # 削除ボタン列
-                    ft.Container(content=ft.Text("アーティスト名", size=12, weight=ft.FontWeight.BOLD), alignment=ft.Alignment.CENTER, expand=True),
-                    ft.Container(content=ft.Text("更新日", size=12, weight=ft.FontWeight.BOLD), width=140),
+                    ft.Container(
+                        content=ft.Text("削除", size=12), 
+                        width=40, 
+                        alignment=ft.Alignment.CENTER
+                    ),
+                    ft.Container(
+                        content=ft.Text("アーティスト名", size=12, weight=ft.FontWeight.BOLD), 
+                        alignment=ft.Alignment.CENTER, 
+                        bgcolor=ft.Colors.BLUE_100, 
+                        expand=True, 
+                    ),
+                    ft.Container(
+                        content=ft.Text("更新日", size=12, weight=ft.FontWeight.BOLD), 
+                        width=140, 
+                        alignment=ft.Alignment.CENTER
+                    ),
                 ],
                 spacing=8,
             ),
-            padding=ft.Padding(4, 4, 4, 4),
+            padding=ft.Padding(0, 0, 0, 0),
             bgcolor=ft.Colors.GREY_200,
             border_radius=4,
         )
@@ -76,9 +92,10 @@ def main(page: ft.Page):
                     )
                     
                     # 更新日表示
-                    date_text = ft.Text(download_date if download_date else "-", size=12)
+                    date_text = ft.Text(download_date if download_date else "-", size=12, text_align=ft.TextAlign.CENTER)
                     
-                    # 1行分のRow
+                    # 1行分のRow - 選択状態なら黄色背景
+                    bgcolor = ft.Colors.YELLOW_200 if selected_artist_name == item else None
                     row = ft.Container(
                         content=ft.Row(
                             controls=[
@@ -88,7 +105,8 @@ def main(page: ft.Page):
                             ],
                             spacing=8,
                         ),
-                        padding=ft.Padding(4, 4, 4, 4),
+                        padding=ft.Padding(0, 0, 0, 0),
+                        bgcolor=bgcolor,
                     )
                     artist_list.content.controls.append(row)
         
@@ -96,6 +114,8 @@ def main(page: ft.Page):
     
     # リストからアーティストを検索
     def search_from_list(artist_name):
+        global selected_artist_name
+        selected_artist_name = artist_name
         left_panel.controls[1].value = artist_name
         api_ret = danbooru_api.getArtistInfobyName(page, artist_name)
         tag_counts = danbooru_api.getTagCounts(page, artist_name.replace(" ", "_"))
@@ -110,6 +130,9 @@ def main(page: ft.Page):
             
             # 右中央パネルにファイルビューワーを表示
             show_file_viewer(artist_name)
+            
+            # リストを再読み込みしてハイライトを更新
+            load_artist_list()
             
             page.show_dialog(ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000))
         else:
@@ -393,13 +416,16 @@ def main(page: ft.Page):
                 page.update()
             page.run_thread(on_error)
     
-    # ダウンロードボタンのクリック処理
+    # ダウンロードボントのクリック処理
     def download_items(e):
+        global selected_artist_name
         if right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value == "":
             page.show_dialog(ft.SnackBar(ft.Text("先にアーティスト名検索をしてください。"), duration=3000))
         else:
             artist_name = right_upper_panel.controls[0].content.controls[0].controls[1].controls[1].value
             is_banned = right_upper_panel.controls[0].content.controls[0].controls[3].controls[1].value
+            # ダウンロード開始時に選択状態をクリア
+            selected_artist_name = None
             # オーバーレイを表示
             overlay.visible = True
             page.update()
