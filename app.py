@@ -4,64 +4,19 @@ from settings import SettingsManager
 from left_panel import LeftPanel
 from right_panel import RightPanel
 
+####################
+# メイン関数
+####################
 def main(page: ft.Page):
-    """Danbooru crawler by artist tag - メインエントリーポイント"""
-    # メインウインドウの設定
-    page.title = "Danbooru crawler by artist tag"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.settings = SettingsManager.load()
-    page.window.width = 1280
-    page.window.height = 720
-    page.window.min_width = 1280
-    page.window.min_height = 720
-    page.padding = 0
-    
     # ログ表示用の関数
     def append_log(message):
-        """ログをTextFieldに追加する"""
         right_panel.log_panel.value += f"{message}\n"
         page.update()
-    
     # ダウンロード完了後のコールバック
     def on_download_complete():
-        """ダウンロード完了時に選护状態をクリア"""
         left_pane.clear_selection()
-    
-    # 右パネルのコールバックを設定
-    right_panel = RightPanel(page)
-    right_panel.set_log_callback(append_log)
-    right_panel.set_download_complete_callback(on_download_complete)
-    
-    # 左パネルのコールバックを設定
-    left_pane = LeftPanel(page, right_panel)
-    left_pane.set_log_callback(append_log)
-    
-    # 右パネルのオーバーレイを取得
-    overlay = right_panel.get_overlay()
-    
-    # 設定をGUIで管理
-    username_text = ft.TextField(
-        value=page.settings["account"]["username"],
-        label="ユーザー名",
-        hint_text="Danbooruユーザー名",
-        text_size=12,
-        expand=True,
-    )
-    api_key_text = ft.TextField(
-        value=page.settings["account"]["api_key"],
-        label="APIキー",
-        hint_text="Danbooru APIキー",
-        text_size=12,
-        password=True,
-        can_reveal_password=True,
-        expand=True,
-    )
-    
     # 設定ダイアログ
     def show_settings_dialog():
-        """
-        show_settings_dialog の Docstring
-        """
         dialog = ft.AlertDialog(
             title=ft.Text("設定"),
             content=ft.Column(
@@ -86,17 +41,53 @@ def main(page: ft.Page):
             actions_alignment=ft.MainAxisAlignment.END,
             modal=True,
         )
-        page.show_dialog(dialog)
-    
+        page.show_dialog(dialog)    
     # 設定保存
     def save_settings(e, dialog):
         page.settings["account"]["username"] = username_text.value
         page.settings["account"]["api_key"] = api_key_text.value
         SettingsManager.save(page.settings)
         dialog.open = False
-        page.show_dialog(ft.SnackBar(ft.Text("設定を保存しました"), duration=2000))
+        page.show_dialog(ft.SnackBar(ft.Text("設定を保存しました。"), duration=2000, bgcolor=ft.Colors.LIGHT_GREEN_900))
         page.update()
-    
+    ####################
+    # 主処理開始
+    ####################
+    # メインウインドウの設定
+    page.title = "Danbooru crawler by artist tag"
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.settings = SettingsManager.load()
+    page.window.width = 1280
+    page.window.height = 720
+    page.window.min_width = 1280
+    page.window.min_height = 720
+    page.padding = 0
+    # 右パネルのコールバックを設定
+    right_panel = RightPanel(page)
+    right_panel.set_log_callback(append_log)
+    right_panel.set_download_complete_callback(on_download_complete)
+    # 左パネルのコールバックを設定
+    left_pane = LeftPanel(page, right_panel)
+    left_pane.set_log_callback(append_log)
+    # 右パネルのオーバーレイを取得
+    overlay = right_panel.get_overlay()
+    # 設定をGUIで管理
+    username_text = ft.TextField(
+        value=page.settings["account"]["username"],
+        label="ユーザー名",
+        hint_text="Danbooruユーザー名",
+        text_size=12,
+        expand=True,
+    )
+    api_key_text = ft.TextField(
+        value=page.settings["account"]["api_key"],
+        label="APIキー",
+        hint_text="Danbooru APIキー",
+        text_size=12,
+        password=True,
+        can_reveal_password=True,
+        expand=True,
+    )
     # メニューバー作成
     menu_bar = ft.Row(
         controls=[
@@ -135,7 +126,6 @@ def main(page: ft.Page):
             )
         ]
     )
-    
     # ページへパネルを追加
     main_content = ft.Column(
         controls=[
@@ -153,7 +143,6 @@ def main(page: ft.Page):
         expand=True,
         spacing=0,
     )
-    
     # オーバーレイを含むStack
     page.add(
         ft.Stack(
@@ -164,10 +153,5 @@ def main(page: ft.Page):
             expand=True,
         )
     )
-    
     # 起動時にアーティスト一覧を読み込み
     left_pane.load_artist_list()
-
-
-if __name__ == "__main__":
-    ft.app(target=main)

@@ -6,24 +6,25 @@ from datetime import datetime
 import danbooru_api
 from downloaded_list import DownloadedListManager
 
+####################
+# 左パネルの管理クラス
+####################
 class LeftPanel:
-    """左パネルの処理を管理するクラス"""
-    
+    # パネルの初期化
     def __init__(self, page: ft.Page, right_panel):
         self.page = page
         self.right_panel = right_panel
         self.selected_artist_name = None
         self.log_callback = None
         
-        # UIコンポーネント
+        # 選択ハイライトの記憶
         self.artist_list = None
         self.search_field = None
         
         # UIの初期化
         self._init_ui()
-    
+    # UIコンポーネントの初期化
     def _init_ui(self):
-        """UIコンポーネントの初期化"""
         self.artist_list = ft.Container(
             content=ft.Column(
                 controls=[],
@@ -38,16 +39,14 @@ class LeftPanel:
             border_radius=8,
             padding=8,
         )
-        
         self.search_field = ft.TextField(
             label="Artist Tag",
             hint_text="input artist tag",
             text_size=12,
             expand=True,
         )
-    
+    # 左パネルのコントロールを返す
     def get_control(self):
-        """左パネルのコントロールを返す"""
         return ft.Column(
             alignment=ft.MainAxisAlignment.START,
             controls=[
@@ -67,18 +66,15 @@ class LeftPanel:
             ],
             width=400,
         )
-    
+    # ログ表示用のコールバックを設定
     def set_log_callback(self, callback):
-        """ログ表示用のコールバックを設定"""
         self.log_callback = callback
-    
+    # ログを追加
     def append_log(self, message):
-        """ログを追加"""
         if self.log_callback:
             self.log_callback(message)
-    
+    # ISO 8601形式の日付文字列を YYYY/MM/DD hh:mm:ss 形式に変換
     def format_date(self, date_str):
-        """ISO 8601形式の日付文字列を YYYY/MM/DD hh:mm:ss 形式に変換"""
         if not date_str:
             return ""
         try:
@@ -86,15 +82,12 @@ class LeftPanel:
             return dt.strftime("%Y/%m/%d %H:%M:%S")
         except:
             return date_str
-    
+    # アーティスト一覧をロード
     def load_artist_list(self):
-        """アーティスト一覧をロード"""
         self.artist_list.content.controls.clear()
         output_dir = "output"
-        
         # downloaded_list.jsonのデータを取得
         downloaded_data = DownloadedListManager.load()
-        
         # ヘッダー行（見出し）
         header_row = ft.Container(
             content=ft.Row(
@@ -123,7 +116,6 @@ class LeftPanel:
             border_radius=4,
         )
         self.artist_list.content.controls.append(header_row)
-        
         if os.path.exists(output_dir) and os.path.isdir(output_dir):
             # outputディレクトリ内のフォルダを取得
             for item in os.listdir(output_dir):
@@ -131,7 +123,6 @@ class LeftPanel:
                 if os.path.isdir(item_path):
                     # ダウンロード日時を取得
                     download_date = downloaded_data.get(item, "")
-                    
                     # 削除ボタン
                     delete_btn = ft.IconButton(
                         icon=ft.Icons.DELETE_OUTLINE,
@@ -140,7 +131,6 @@ class LeftPanel:
                         tooltip="削除",
                         on_click=lambda e, name=item: self.delete_artist(name),
                     )
-                    
                     # アーティスト名（クリック可能）
                     artist_name_btn = ft.TextButton(
                         content=ft.Text(item, size=12),
@@ -149,14 +139,12 @@ class LeftPanel:
                             padding=ft.Padding(8, 4, 8, 4),
                         ),
                     )
-                    
                     # 更新日表示
                     date_text = ft.Text(
                         download_date if download_date else "-",
                         size=12,
                         text_align=ft.TextAlign.CENTER
                     )
-                    
                     # 1行分のRow - 選択状態なら黄色背景
                     bgcolor = ft.Colors.YELLOW_200 if self.selected_artist_name == item else None
                     row = ft.Container(
@@ -172,18 +160,14 @@ class LeftPanel:
                         bgcolor=bgcolor,
                     )
                     self.artist_list.content.controls.append(row)
-        
         self.page.update()
-    
+    # リストからアーティストを検索
     def search_from_list(self, artist_name):
-        """リストからアーティストを検索"""
         self.selected_artist_name = artist_name
         self.search_field.value = artist_name
-        
         # APIからデータを取得
         api_ret = danbooru_api.getArtistInfobyName(self.page, artist_name)
         tag_counts = danbooru_api.getTagCounts(self.page, artist_name.replace(" ", "_"))
-        
         if api_ret != []:
             # 右パネルにアーティスト情報を表示
             self.right_panel.set_artist_info(
@@ -195,34 +179,27 @@ class LeftPanel:
                 api_ret[0]["is_banned"],
                 str(tag_counts["counts"]["posts"])
             )
-            
             # 右パネルにファイルビューワーを表示
             self.right_panel.show_file_viewer(artist_name)
-            
             # リストを再読み込みしてハイライトを更新
             self.load_artist_list()
-            
             self.page.show_dialog(
-                ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました"), duration=2000)
+                ft.SnackBar(ft.Text(f"「{artist_name}」を表示しました。"), duration=3000, bgcolor=ft.Colors.LIGHT_GREEN_900)
             )
         else:
             self.page.show_dialog(
-                ft.SnackBar(ft.Text("Not Found."), duration=3000)
+                ft.SnackBar(ft.Text("検索しましたが見つかりませんでした。"), duration=3000, bgcolor=ft.Colors.RED)
             )
-        
         self.page.update()
-    
+    # アーティスト名を検索
     def search_artistname(self, e):
-        """アーティスト名を検索"""
         if self.search_field.value == "":
             self.page.show_dialog(
-                ft.SnackBar(ft.Text("アーティスト名を入れてください。"), duration=3000)
+                ft.SnackBar(ft.Text("アーティスト名を入れてください。"), duration=3000, bgcolor=ft.Colors.RED)
             )
             return
-        
         api_ret = danbooru_api.getArtistInfobyName(self.page, self.search_field.value)
         tag_counts = danbooru_api.getTagCounts(self.page, self.search_field.value.replace(" ", "_"))
-        
         if api_ret != []:
             self.right_panel.set_artist_info(
                 api_ret[0]["id"],
@@ -236,21 +213,17 @@ class LeftPanel:
             self.page.update()
         else:
             self.page.show_dialog(
-                ft.SnackBar(ft.Text("Not Found."), duration=3000)
+                ft.SnackBar(ft.Text("検索しましたが見つかりませんでした。"), duration=3000, bgcolor=ft.Colors.RED)
             )
-    
+    # ダウンロード済みのアーティストを削除
     def delete_artist(self, artist_name):
-        """ダウンロード済みのアーティストを削除"""
-        
         # 確認ダイアログ
         def confirm_delete(e, dialog):
             # ダイアログを閉じる
             dialog.open = False
             self.page.update()
-            
             # ダウンロード済みデータから削除
             DownloadedListManager.remove_artist(artist_name)
-            
             # outputディレクトリ内のフォルダを削除
             output_dir = "output"
             artist_path = os.path.join(output_dir, artist_name)
@@ -258,15 +231,13 @@ class LeftPanel:
                 shutil.rmtree(artist_path)
                 self.append_log(f"削除完了: {artist_name}")
             else:
-                self.append_log(f"フォルダ見つかりず: {artist_name}")
-            
+                self.append_log(f"フォルダがありません: {artist_name}")
             # リストを再読み込み
             self.load_artist_list()
             self.page.show_dialog(
-                ft.SnackBar(ft.Text(f"「{artist_name}」を削除しました"), duration=2000)
+                ft.SnackBar(ft.Text(f"「{artist_name}」を削除しました。"), duration=3000, bgcolor=ft.Colors.LIGHT_GREEN_900)
             )
             self.page.update()
-        
         # 確認求めるダイアログ
         dialog = ft.AlertDialog(
             title=ft.Text("削除確認"),
@@ -277,16 +248,13 @@ class LeftPanel:
             ],
         )
         self.page.show_dialog(dialog)
-    
+    # 選択されたアーティスト名を取得
     def get_selected_artist_name(self):
-        """選択されたアーティスト名を取得"""
         return self.selected_artist_name
-    
+    # 選択状態をクリア
     def clear_selection(self):
-        """選択状態をクリア"""
         self.selected_artist_name = None
         self.load_artist_list()
-    
+    # ファイル選択状態をクリア（右パネルに委譲）
     def clear_file_selection(self):
-        """ファイル選択状態をクリア（右パネルに委譲）"""
         self.right_panel.clear_file_selection()

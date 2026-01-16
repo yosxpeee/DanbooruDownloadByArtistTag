@@ -3,8 +3,12 @@ import json
 
 SETTING_JSON_FILE = "settings.json"
 
+####################
+# 設定ファイルの管理クラス
+####################
 class SettingsManager:
     @staticmethod
+    # settings.jsonの読み込み
     def load():
         settings = {}
         if os.path.exists(SETTING_JSON_FILE):
@@ -19,6 +23,7 @@ class SettingsManager:
             settings["account"]["api_key"] = "Input api key"
         return settings
     @staticmethod
+    # settings.jsonの保存
     def save(settings):
         with open(SETTING_JSON_FILE, 'w') as f:
             json.dump(settings, f, indent=4)
