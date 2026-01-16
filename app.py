@@ -142,20 +142,34 @@ def main(page: ft.Page):
                 expand=True,
             )
             return preview
-        elif ext in [".mp4", ".webm", ".gif"]:
-            # 動画ファイル
-            preview = ft.Video(
-                src=file_path,
+        elif ext in [".mp4", ".webm"]:
+            # 動画ファイル - プレビュー不可のためアイコン表示にとどめる
+            return ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Icon(ft.Icons.VIDEO_LIBRARY, size=48, color=ft.Colors.BLUE),
+                        ft.Text("動画ファイル", size=12),
+                        ft.Text(os.path.basename(file_path), size=10),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=8,
+                ),
+                alignment=ft.Alignment.CENTER,
                 expand=True,
-                autoplay=False,
-                muted=False,
-                controls=True,
             )
-            return preview
         else:
             # 画像・動画以外は×アイコン表示
             return ft.Container(
-                content=ft.Icon(ft.Icons.CLOSE, size=64, color=ft.Colors.GREY_400),
+                content=ft.Column(
+                    controls=[
+                        ft.Icon(ft.Icons.CLOSE, size=64, color=ft.Colors.GREY_400),
+                        ft.Text(os.path.basename(file_path), size=10),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=8,
+                ),
                 alignment=ft.Alignment.CENTER,
                 expand=True,
             )
@@ -364,6 +378,8 @@ def main(page: ft.Page):
                 page.show_dialog(ft.SnackBar(ft.Text(f"download finished. {total}枚"), duration=3000))
                 # アーティストリストを再読み込み
                 load_artist_list()
+                # ダウンロード完了後、右中央パネルをクリア
+                right_middle_panel.controls.clear()
                 page.update()
             
             page.run_thread(on_complete)
@@ -655,15 +671,7 @@ def main(page: ft.Page):
     )
     right_middle_panel=ft.Column(
         alignment=ft.MainAxisAlignment.START,
-        controls=[
-            ft.Container(
-                content=None,
-                expand=True,
-                border=ft.border.all(1, ft.Colors.GREY_400),
-                border_radius=8,
-                padding=2,
-            )
-        ],
+        controls=[], #初期状態は空にしておく
         expand=5,
         spacing=0,
     )
